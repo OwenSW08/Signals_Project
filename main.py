@@ -8,6 +8,8 @@ import sounddevice as sd
 import numpy as np
 from scipy.io.wavfile import write
 
+# import wave
+
 """Signal in time domain. samplerate is the number of samples per second."""
 
 
@@ -34,7 +36,8 @@ def get_fit_transfer_func(transfer_func: Callable[[float], complex], frequencies
     return {"signal": transfer_func_vals, "delta_w": delta_w}
 
 
-"""Match array-based transfer function to calculated frequencies of some fft, so that output[i] = transfer_func[fft_freqs[i] / transfer_func["delta_w"]]."""
+"""Match array-based transfer function to calculated frequencies of some fft, so that output[i] = transfer_func[
+fft_freqs[i] / transfer_func["delta_w"]]."""
 
 
 def fit_array_transfer_func(transfer_func: W_Signal, fft_freqs: np.ndarray) -> W_Signal:
@@ -59,8 +62,9 @@ def fit_array_transfer_func(transfer_func: W_Signal, fft_freqs: np.ndarray) -> W
 """Generate impulse response from callback function (in form f(t)=h(t)), given a sampling rate and length."""
 
 
-def get_fit_impulse_response(impulse_response: Callable[[float], float], samplerate: int, length: float) -> T_Signal:
-    impulse_response_vals = np.array([impulse_response(t) for t in np.arange(0, length, 1 / samplerate)])
+def get_fit_impulse_response(impulse_response: Callable[[float], float], samplerate: int, length: int) -> T_Signal:
+    impulse_response_vals = np.array(
+        [impulse_response(t) / length for t in np.linspace(0, length / samplerate, length)])
 
     return {"signal": impulse_response_vals, "samplerate": samplerate}
 
@@ -108,15 +112,24 @@ class AudioRecorder:
         self.save_button = tk.Button(root, text="Save as .wav", command=self.save_audio)
         self.save_button.pack(pady=10)
 
+        self.filter1_button = tk.Button(root, text="Use Filter 1", command=self.demo_filter1)
+        self.filter1_button.pack(pady=10)
+
+        self.filter2_button = tk.Button(root, text="Use Filter 2", command=self.demo_filter2)
+        self.filter2_button.pack(pady=10)
+
+        self.play_filtered_audio_button = tk.Button(root, text="Play filtered audio", command=self.play_filtered_audio)
+        self.play_filtered_audio_button.pack(pady=10)
+
     def record_audio(self):
         if not self.recording:
             self.recording = True
             self.record_button.config(text="Stop Recording")
 
             samplerate = 44100
-            channels = 2
+            channels = 1  # alert: there are things that won't work if this gets changed, I think
 
-            audio_data = sd.rec(int(5 * 44100), samplerate=samplerate, channels=channels, dtype='int16')
+            audio_data = sd.rec(int(5 * 44100), samplerate=samplerate, channels=channels)
 
             self.audio_data = {"signal": audio_data[0:len(audio_data):channels],
                                "samplerate": samplerate}  # to reduce to one time-domain signal, only take one channel
@@ -130,32 +143,38 @@ class AudioRecorder:
 
     def play_audio(self):
         if self.audio_data is not None:
-            sd.play(self.audio_data, samplerate=44100)
+            sd.play(self.audio_data["signal"], samplerate=self.audio_data["samplerate"])
             sd.wait()
         else:
             messagebox.showwarning("Warning", "No audio recorded")
 
     def save_audio(self):
         if self.audio_data is not None:
-            write('output.wav', 44100, self.audio_data)
+            write('output.wav', self.audio_data["samplerate"], self.audio_data["signal"])
             messagebox.showinfo("Info", "Audio saved as output.wav")
         else:
             messagebox.showwarning("Warning", "No audio recorded")
 
+    def play_filtered_audio(self):
+        if self.filtered_audio_data is not None:
+            sd.play(self.filtered_audio_data["signal"], samplerate=self.filtered_audio_data["samplerate"])
+            sd.wait()
+        else:
+            messagebox.showwarning("Warning", "No audio recorded")
+
     # TODO: decompose these into frequency and time domain functions
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
-    by factor (multiply sampling rate) and return filtered audio data."""
+    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse response (might remove, since this the transfer function can accomplish this), compress final time-domain signal by factor (multiply sampling rate) and return filtered audio data."""
 
     def apply_filter_type1(self, audio_signal: T_Signal, transfer_func: W_Signal, factor: float = 1,
                            impulse_response: T_Signal | None = None) -> T_Signal:
 
         # note: for efficiency, we might try setting n to a power of 2 in the future
-        fft_audio_signal = np.fft.fft(audio_signal["signal"])
+        fft_audio_signal = np.fft.fft([data[0] for data in audio_signal["signal"]])
         fft_freqs = np.fft.fftfreq(len(fft_audio_signal), d=1 / audio_signal["samplerate"])
 
         # apply transfer function to fourier transform of audio signal
         fit_transfer_func = fit_array_transfer_func(transfer_func, fft_freqs)
+
         fft_filtered_audio_signal = fft_audio_signal * fit_transfer_func["signal"]
 
         # convert back to time domain
@@ -171,20 +190,20 @@ class AudioRecorder:
         else:
             return {"signal": filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
 
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
-    by factor (multiply sampling rate) and return filtered audio data."""
+    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse response (might remove, since this the transfer function can accomplish this), compress final time-domain signal by factor (multiply sampling rate) and return filtered audio data."""
 
     def apply_filter_type2(self, audio_signal: T_Signal, transfer_func: Callable[[float], complex], factor: float = 1,
                            impulse_response: Callable[[float], float] | None = None,
                            impulse_length: int = 100) -> T_Signal:
 
         # note: for efficiency, we might try setting n to a power of 2 in the future
-        fft_audio_signal = np.fft.fft(audio_signal["signal"])
+        fft_audio_signal = np.fft.fft([data[0] for data in audio_signal["signal"]])
+        print(np.shape(fft_audio_signal))
         fft_freqs = np.fft.fftfreq(len(fft_audio_signal), d=1 / audio_signal["samplerate"])
 
         # apply transfer function to fourier transform of audio signal
         fit_transfer_func = get_fit_transfer_func(transfer_func, fft_freqs)
+        print(np.shape(fit_transfer_func["signal"]))
         fft_filtered_audio_signal = fft_audio_signal * fit_transfer_func["signal"]
 
         # convert back to time domain
@@ -194,12 +213,57 @@ class AudioRecorder:
         if (impulse_response is not None):
             fit_impulse_response = get_fit_impulse_response(impulse_response, audio_signal["samplerate"],
                                                             impulse_length)
-            final_filtered_audio_signal = np.convolve(filtered_audio_signal, fit_impulse_response["signal"],
-                                                      mode='same')
+            print(np.shape(fit_impulse_response["signal"]))
+            vector_filtered_audio_signal = np.convolve(filtered_audio_signal, fit_impulse_response["signal"],
+                                                       mode='valid')
+            final_filtered_audio_signal = np.array([[data] for data in vector_filtered_audio_signal])
+
+            print(audio_signal["signal"][:100])
+            print()
+            print(filtered_audio_signal[:100])
+            print()
+            print(fit_impulse_response["signal"][:100])
+            print()
+            print(vector_filtered_audio_signal[:100])
+            print()
+            print(final_filtered_audio_signal[:100])
 
             return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
         else:
-            return {"signal": filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
+
+            final_filtered_audio_signal = np.array(
+                [[data] for data in filtered_audio_signal])  # convert back to form sounddevice expects
+
+            print(audio_signal["signal"][:100])
+            print()
+            print(fft_audio_signal[:100])
+            print()
+            print(fft_filtered_audio_signal[:100])
+            print()
+            print(filtered_audio_signal[:100])
+            print()
+            print(final_filtered_audio_signal[:100])
+
+            return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
+
+    """Apple demo low-pass filter, which I hope sounds like an echo, on audio_data, and save to filtered_audio_data."""
+
+    def demo_filter1(self):
+        def transfer_func(w: float) -> complex:
+            return 100 / (4 + 1j * w)
+
+        self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func)
+
+    """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay impulse of time constant f 1 second"""
+
+    def demo_filter2(self):
+        def transfer_func(w: float) -> complex:
+            return 1
+
+        def impulse_response(t: float) -> float:
+            return np.exp(-t)
+
+        self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1, impulse_response, 100)
 
 
 if __name__ == "__main__":
