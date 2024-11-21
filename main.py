@@ -289,6 +289,17 @@ class AudioRecorder:
 
         self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1, impulse_response, 100)
 
+    def ghost_filter(self):
+        sound = self.audio_data["signal"]
+        sound.set_reverse()
+        sound.set_echo(0.05)
+        sound.set_reverse()
+        sound.set_audio_speed(.70)
+        sound.set_audio_pitch(2)
+        sound.set_volume(8.0)
+        sound.set_bandpass(50, 3200)
+
+
     def get_impulse(self, file="zombie-6851.wav"):
         aud_file = wave.open(file)
         # The number of audio frames in the file
