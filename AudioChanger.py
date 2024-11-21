@@ -96,3 +96,6 @@ class AudioChanger(object):
         cutoff[1] = cutoff_high / nyquist
         x, y = signal.butter(order, cutoff, btype='bandpass', analog=False)
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
+
+    def get_audio_data(self):
+        return main.T_Signal(signal = self.audio_data, samplerate = self.sample_freq)
