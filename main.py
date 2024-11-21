@@ -10,6 +10,8 @@ import sounddevice as sd
 import numpy as np
 from scipy.io.wavfile import write
 
+from AudioChanger import AudioChanger
+
 # import wave
 
 """Signal in time domain. samplerate is the number of samples per second."""
@@ -121,6 +123,9 @@ class AudioRecorder:
 
         self.filter2_button = tk.Button(root, text="Use Filter 2", command=self.demo_filter2)
         self.filter2_button.pack(pady=10)
+
+        self.filter3_button = tk.Button(root, text="Use Ghost filter", command=self.ghost_filter)
+        self.filter3_button.pack(pady=10)
 
         self.play_filtered_audio_button = tk.Button(root, text="Play filtered audio", command=self.play_filtered_audio)
         self.play_filtered_audio_button.pack(pady=10)
@@ -270,12 +275,9 @@ class AudioRecorder:
             return {"signal": audio_signal["signal"], "samplerate": int(audio_signal["samplerate"])}
 
     def demo_filter1(self):
-        """
+
         def transfer_func(w: float) -> complex:
             return 100 / (4 + 1j * w)
-        """
-
-        self.filtered_audio_data = self.apply_impulse_filter(self.audio_data, self.get_impulse())
 
     """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay 
     impulse of time constant f 1 second"""
@@ -284,20 +286,16 @@ class AudioRecorder:
         def transfer_func(w: float) -> complex:
             return 1
 
+    def ghost_filter(self):
+        sound = AudioChanger(self.audio_data)
+        sound.set_volume(0.1)
+        self.filtered_audio_data = sound.get_audio_data()
+
         def impulse_response(t: float) -> float:
             return np.exp(-t)
 
         self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1, impulse_response, 100)
 
-    def ghost_filter(self):
-        sound = self.audio_data["signal"]
-        sound.set_reverse()
-        sound.set_echo(0.05)
-        sound.set_reverse()
-        sound.set_audio_speed(.70)
-        sound.set_audio_pitch(2)
-        sound.set_volume(8.0)
-        sound.set_bandpass(50, 3200)
 
 
     def get_impulse(self, file="zombie-6851.wav"):

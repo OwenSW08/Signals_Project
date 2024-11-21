@@ -4,12 +4,12 @@ from numpy import array, int16
 from scipy.signal import lfilter, butter
 from scipy.io.wavfile import read, write
 from scipy import signal
-import main
+import main2
 
 class AudioChanger(object):
     __slots__ = ('audio_data', 'sample_freq')
 
-    def __init__(self, input_audio_path: main.T_Signal):
+    def __init__(self, input_audio_path: main2.T_Signal):
 
         self.sample_freq = input_audio_path["samplerate"]
         self.audio_data = input_audio_path["signal"]
@@ -41,7 +41,6 @@ class AudioChanger(object):
     def set_reverse(self):
         '''Reverses the audio'''
         self.audio_data = self.audio_data[::-1]
-
     def set_audio_pitch(self, n, window_size=2 ** 13, h=2 ** 11):
         '''Sets the pitch of the audio to a certain threshold'''
         factor = 2 ** (1.0 * n / 12.0)
@@ -98,4 +97,4 @@ class AudioChanger(object):
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def get_audio_data(self):
-        return main.T_Signal(signal = self.audio_data, samplerate = self.sample_freq)
+        return main2.T_Signal(signal = self.audio_data, samplerate = self.sample_freq)
