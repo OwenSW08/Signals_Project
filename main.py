@@ -9,17 +9,11 @@ import numpy
 import sounddevice as sd
 import numpy as np
 from scipy.io.wavfile import write
+import T_Signal
 
 from AudioChanger import AudioChanger
 
 # import wave
-
-"""Signal in time domain. samplerate is the number of samples per second."""
-
-
-class T_Signal(TypedDict):
-    signal: np.ndarray
-    samplerate: int
 
 
 """Signal in frequency domain. delta_w is the difference in frequency between two consecutive entries."""
@@ -290,14 +284,14 @@ class AudioRecorder:
         sound = AudioChanger(self.audio_data)
         sound.set_volume(0.1)
         self.filtered_audio_data = sound.get_audio_data()
-
-        def impulse_response(t: float) -> float:
-            return np.exp(-t)
+"""
+    def impulse_response(t: float) -> float:
+        return np.exp(-t)
 
         self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1, impulse_response, 100)
+"""
 
-
-
+"""
     def get_impulse(self, file="zombie-6851.wav"):
         aud_file = wave.open(file)
         # The number of audio frames in the file
@@ -310,7 +304,7 @@ class AudioRecorder:
         sig = sig.astype(float)
         aud_file.close()
         return T_Signal(signal=sig, samplerate=aud_framerate)
-
+"""
 
 if __name__ == "__main__":
     root = tk.Tk()
