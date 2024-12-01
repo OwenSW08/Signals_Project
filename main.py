@@ -111,15 +111,22 @@ class AudioRecorder:
 
         self.save_button = tk.Button(root, text="Save as .wav", command=self.save_audio)
         self.save_button.pack(pady=10)
-
+        """
         self.filter1_button = tk.Button(root, text="Use Filter 1", command=self.demo_filter1)
         self.filter1_button.pack(pady=10)
 
         self.filter2_button = tk.Button(root, text="Use Filter 2", command=self.demo_filter2)
         self.filter2_button.pack(pady=10)
+        """
 
         self.filter3_button = tk.Button(root, text="Use Ghost filter", command=self.ghost_filter)
         self.filter3_button.pack(pady=10)
+
+        self.filter4_button = tk.Button(root, text="Use Banshee filter", command=self.banshee_filter)
+        self.filter4_button.pack(pady=10)
+
+        self.filter5_button = tk.Button(root, text="Use Zombie filter", command=self.zombie_filter)
+        self.filter5_button.pack(pady=10)
 
         self.play_filtered_audio_button = tk.Button(root, text="Play filtered audio", command=self.play_filtered_audio)
         self.play_filtered_audio_button.pack(pady=10)
@@ -169,7 +176,7 @@ class AudioRecorder:
     """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
     response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
     by factor (multiply sampling rate) and return filtered audio data."""
-
+    """
     def apply_filter_type1(self, audio_signal: T_Signal, transfer_func: W_Signal, factor: float = 1,
                            impulse_response: T_Signal | None = None) -> T_Signal:
 
@@ -194,11 +201,11 @@ class AudioRecorder:
             return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
         else:
             return {"signal": filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-
+    """
     """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
     response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
     by factor (multiply sampling rate) and return filtered audio data."""
-
+    """
     def apply_filter_type2(self, audio_signal: T_Signal, transfer_func: Callable[[float], complex], factor: float = 1,
                            impulse_response: Callable[[float], float] | None = None,
                            impulse_length: int = 100) -> T_Signal:
@@ -252,9 +259,9 @@ class AudioRecorder:
             print(final_filtered_audio_signal[:100])
 
             return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-
+    """
     """Apple demo low-pass filter, which I hope sounds like an echo, on audio_data, and save to filtered_audio_data."""
-
+    """
     def apply_impulse_filter(self, audio_signal: T_Signal,
                              impulse_response: T_Signal | None = None) -> T_Signal:
 
@@ -273,16 +280,40 @@ class AudioRecorder:
         def transfer_func(w: float) -> complex:
             return 100 / (4 + 1j * w)
 
+    """
     """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay 
     impulse of time constant f 1 second"""
-
+    """
     def demo_filter2(self):
         def transfer_func(w: float) -> complex:
             return 1
+    """
 
     def ghost_filter(self):
         sound = AudioChanger(self.audio_data)
+        sound.set_audio_speed(0.8)
         sound.set_volume(0.1)
+        sound.set_echo(0.1)
+        sound.set_highpass(1000)
+        sound.set_audio_pitch(6)
+        self.filtered_audio_data = sound.get_audio_data()
+
+    def banshee_filter(self):
+        sound = AudioChanger(self.audio_data)
+        sound.set_volume(0.7)
+        sound.set_echo(0.1)
+        sound.set_echo(0.2)
+        sound.set_highpass(1000)
+        sound.set_audio_pitch(6)
+        self.filtered_audio_data = sound.get_audio_data()
+
+    def zombie_filter(self):
+        sound = AudioChanger(self.audio_data)
+        sound.set_volume(0.7)
+        sound.set_echo(0.1)
+        sound.set_echo(0.2)
+        sound.set_highpass(1000)
+        sound.set_audio_pitch(6)
         self.filtered_audio_data = sound.get_audio_data()
 """
     def impulse_response(t: float) -> float:
