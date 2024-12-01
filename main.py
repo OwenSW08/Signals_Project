@@ -12,6 +12,9 @@ from scipy.io.wavfile import write
 import T_Signal
 
 from AudioChanger import AudioChanger
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                               NavigationToolbar2Tk)
 
 # import wave
 
@@ -96,6 +99,21 @@ class AudioRecorder:
     def __init__(self, root):
         self.root = root
         self.root.title("Audio Recorder")
+        self.root.geometry("800x400")
+        self.main_box = tk.LabelFrame(root, pady=20)
+        self.button_box = tk.LabelFrame(self.main_box, pady=20)
+        self.main_box.pack(side="top", fill="x")
+        self.button_box.pack(pady=20)
+        self.fig = Figure(figsize=(3, 3), dpi=100)
+        self.y = [i ** 2 for i in range(101)]
+        # adding the subplot
+        self.plot1 = self.fig.add_subplot(111)
+        # plotting the graph
+        self.plot1.plot(self.y)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.main_box)
+        self.canvas.draw()
+        # placing the canvas on the Tkinter window
+        self.canvas.get_tk_widget().pack()
 
         self.recording = False
         self.audio_data: T_Signal = {"signal": np.array([]), "samplerate": 1}  # audio data recorded from microphone
@@ -103,13 +121,13 @@ class AudioRecorder:
         self.filtered_audio_data: T_Signal = {"signal": np.array([]),
                                               "samplerate": 1}  # audio data after applying filter
 
-        self.record_button = tk.Button(root, text="Record", command=self.record_audio)
+        self.record_button = tk.Button(self.button_box, text="Record", command=self.record_audio)
         self.record_button.pack(pady=10)
 
-        self.play_button = tk.Button(root, text="Play", command=self.play_audio)
+        self.play_button = tk.Button(self.button_box, text="Play", command=self.play_audio)
         self.play_button.pack(pady=10)
 
-        self.save_button = tk.Button(root, text="Save as .wav", command=self.save_audio)
+        self.save_button = tk.Button(self.button_box, text="Save as .wav", command=self.save_audio)
         self.save_button.pack(pady=10)
         """
         self.filter1_button = tk.Button(root, text="Use Filter 1", command=self.demo_filter1)
@@ -119,16 +137,17 @@ class AudioRecorder:
         self.filter2_button.pack(pady=10)
         """
 
-        self.filter3_button = tk.Button(root, text="Use Ghost filter", command=self.ghost_filter)
+        self.filter3_button = tk.Button(self.button_box, text="Use Ghost filter", command=self.ghost_filter)
         self.filter3_button.pack(pady=10)
 
-        self.filter4_button = tk.Button(root, text="Use Banshee filter", command=self.banshee_filter)
+        self.filter4_button = tk.Button(self.button_box, text="Use Banshee filter", command=self.banshee_filter)
         self.filter4_button.pack(pady=10)
 
-        self.filter5_button = tk.Button(root, text="Use Zombie filter", command=self.zombie_filter)
+        self.filter5_button = tk.Button(self.button_box, text="Use Zombie filter", command=self.zombie_filter)
         self.filter5_button.pack(pady=10)
 
-        self.play_filtered_audio_button = tk.Button(root, text="Play filtered audio", command=self.play_filtered_audio)
+        self.play_filtered_audio_button = tk.Button(self.button_box, text="Play filtered audio",
+                                                    command=self.play_filtered_audio)
         self.play_filtered_audio_button.pack(pady=10)
 
     def record_audio(self):
@@ -315,6 +334,8 @@ class AudioRecorder:
         sound.set_highpass(1000)
         sound.set_audio_pitch(6)
         self.filtered_audio_data = sound.get_audio_data()
+
+
 """
     def impulse_response(t: float) -> float:
         return np.exp(-t)
