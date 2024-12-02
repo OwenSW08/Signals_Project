@@ -13,6 +13,12 @@ class AudioChanger(object):
 
         self.sample_freq = input_audio_path["samplerate"]
         self.audio_data = input_audio_path["signal"]
+        self.audio_data = AudioChanger.normalize(self.audio_data)
+
+    @staticmethod
+    def normalize (audio):
+        normalized_signal = (audio / np.max(np.abs(audio)))
+        return normalized_signal
 
     def set_audio_speed(self, speed_factor):
         '''Sets the speed of the audio by a floating-point factor'''
@@ -38,9 +44,6 @@ class AudioChanger(object):
 
         self.audio_data = output_audio
 
-    def set_reverse(self):
-        '''Reverses the audio'''
-        self.audio_data = self.audio_data[::-1]
     def set_audio_pitch(self, n, window_size=2 ** 13, h=2 ** 11):
         '''Sets the pitch of the audio to a certain threshold'''
         factor = 2 ** (1.0 * n / 12.0)
@@ -75,14 +78,14 @@ class AudioChanger(object):
 
     def set_lowpass(self, cutoff_low, order=5):
         '''Applies a low pass filter'''
-        nyquist = self.sample_freq / 2.0
+        nyquist = self.sample_freq
         cutoff = cutoff_low / nyquist
         x, y = signal.butter(order, cutoff, btype='lowpass', analog=False)
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def set_highpass(self, cutoff_high, order=5):
         '''Applies a high pass filter'''
-        nyquist = self.sample_freq / 2.0
+        nyquist = self.sample_freq
         cutoff = cutoff_high / nyquist
         x, y = signal.butter(order, cutoff, btype='highpass', analog=False)
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
@@ -90,7 +93,7 @@ class AudioChanger(object):
     def set_bandpass(self, cutoff_low, cutoff_high, order=5):
         '''Applies a band pass filter'''
         cutoff = np.zeros(2)
-        nyquist = self.sample_freq / 2.0
+        nyquist = self.sample_freq
         cutoff[0] = cutoff_low / nyquist
         cutoff[1] = cutoff_high / nyquist
         x, y = signal.butter(order, cutoff, btype='bandpass', analog=False)

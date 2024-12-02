@@ -1,100 +1,17 @@
 from __future__ import annotations
-
 import tkinter as tk
 import wave
 from tkinter import messagebox
 from typing import TypedDict, Callable
-
 import numpy
 import sounddevice as sd
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.io.wavfile import write
-import T_Signal
-
+from T_Signal import T_Signal
 from AudioChanger import AudioChanger
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
-                                               NavigationToolbar2Tk)
-
-# import wave
-
-
-"""Signal in frequency domain. delta_w is the difference in frequency between two consecutive entries."""
-
-
-class W_Signal(TypedDict):
-    signal: np.ndarray
-    delta_w: float
-
-
-"""Generate transfer function in W_signal format from a callback function (in form f(w)=H(jw)), given list of
-frequencies. Note that for delta_w in the output is  only accurate if the input frequencies are evenly spaced."""
-
-
-def get_fit_transfer_func(transfer_func: Callable[[float], complex], frequencies: np.ndarray) -> W_Signal:
-    transfer_func_vals = np.array([transfer_func(w) for w in frequencies])
-    delta_w = frequencies[1] - frequencies[0]
-
-    return {"signal": transfer_func_vals, "delta_w": delta_w}
-
-
-"""Match array-based transfer function to calculated frequencies of some fft, so that output[i] = transfer_func[
-fft_freqs[i] / transfer_func["delta_w"]]."""
-
-
-def fit_array_transfer_func(transfer_func: W_Signal, fft_freqs: np.ndarray) -> W_Signal:
-    # fit transfer function to fft frequencies
-    new_transfer_func = np.zeros(len(fft_freqs))
-
-    for i in range(len(fft_freqs)):
-        # get nearest 2 frequencies in transfer function, and interpolate
-        low_index = fft_freqs[i] // transfer_func["delta_w"]
-        high_index = low_index + 1
-
-        if high_index < len(transfer_func["signal"]):
-            partition = (fft_freqs[i] / transfer_func["delta_w"]) % 1
-            new_transfer_func[i] = transfer_func["signal"][low_index] * (1 - partition) + transfer_func["signal"][
-                high_index] * partition
-        else:
-            new_transfer_func[i] = transfer_func["signal"][low_index]
-
-    return {"signal": new_transfer_func, "delta_w": fft_freqs[1] - fft_freqs[0]}
-
-
-"""Generate impulse response from callback function (in form f(t)=h(t)), given a sampling rate and length."""
-
-
-def get_fit_impulse_response(impulse_response: Callable[[float], float], samplerate: int, length: int) -> T_Signal:
-    impulse_response_vals = np.array(
-        [impulse_response(t) / length for t in np.linspace(0, length / samplerate, length)])
-
-    return {"signal": impulse_response_vals, "samplerate": samplerate}
-
-
-"""Return given array-based impulse response converted to given sampling rate. If sampling rate is the same,
-return copy."""
-
-
-def fit_array_impulse_response(impulse_response: T_Signal, samplerate: int) -> T_Signal:
-    if impulse_response["samplerate"] == samplerate:
-        return {"signal": impulse_response["signal"].copy(), "samplerate": samplerate}
-
-    new_impulse_response = np.zeros(int(len(impulse_response["signal"]) * impulse_response["samplerate"] / samplerate))
-
-    for i in range(len(new_impulse_response)):
-        low_index = i * samplerate // impulse_response["samplerate"]
-        high_index = low_index + 1
-
-        if high_index < len(impulse_response["signal"]):
-            partition = (i * samplerate / impulse_response["samplerate"]) % 1
-            new_impulse_response[i] = impulse_response["signal"][low_index] * (1 - partition) + \
-                                      impulse_response["signal"][high_index] * partition
-        else:
-            new_impulse_response[i] = impulse_response["signal"][low_index]
-
-    return {"signal": new_impulse_response, "samplerate": samplerate}
-
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg # (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 class AudioRecorder:
     def __init__(self, root):
@@ -105,12 +22,15 @@ class AudioRecorder:
         self.button_box = tk.LabelFrame(self.main_box, pady=20)
         self.main_box.pack(side="top", fill="x")
         self.button_box.pack(side="left", pady=20)
-        fig = Figure(figsize=(5, 5), dpi=100)
-        y = [i ** 2 for i in range(101)]
+        fig = Figure(figsize=(6, 6), dpi=100)
+        y = 0
         # adding the subplot
         plot1 = fig.add_subplot(111)
         # plotting the graph
         plot1.plot(y)
+        plot1.set_title('Time Domain Graph of Audio Recording')
+        plot1.set_xlabel('Samples')
+        plot1.set_ylabel('Amplitude')
         self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
         self.canvas.draw()
         # placing the canvas on the Tkinter window
@@ -128,26 +48,16 @@ class AudioRecorder:
         self.play_button = tk.Button(self.button_box, text="Play", command=self.play_audio)
         self.play_button.pack(pady=10)
 
-        self.save_button = tk.Button(self.button_box, text="Save as .wav", command=self.save_audio)
-        self.save_button.pack(pady=10)
-        """
-        self.filter1_button = tk.Button(root, text="Use Filter 1", command=self.demo_filter1)
+        self.filter1_button = tk.Button(self.button_box, text="Use Ghost Filter", command=self.ghost_filter)
         self.filter1_button.pack(pady=10)
 
-        self.filter2_button = tk.Button(root, text="Use Filter 2", command=self.demo_filter2)
+        self.filter2_button = tk.Button(self.button_box, text="Use Demon Filter", command=self.demon_filter)
         self.filter2_button.pack(pady=10)
-        """
 
-        self.filter3_button = tk.Button(self.button_box, text="Use Ghost filter", command=self.ghost_filter)
+        self.filter3_button = tk.Button(self.button_box, text="Use Alien Filter", command=self.alien_filter)
         self.filter3_button.pack(pady=10)
 
-        self.filter4_button = tk.Button(self.button_box, text="Use Demon filter", command=self.demon_filter)
-        self.filter4_button.pack(pady=10)
-
-        self.filter5_button = tk.Button(self.button_box, text="Use Zombie filter", command=self.zombie_filter)
-        self.filter5_button.pack(pady=10)
-
-        self.play_filtered_audio_button = tk.Button(self.button_box, text="Play filtered audio",
+        self.play_filtered_audio_button = tk.Button(self.button_box, text="Play Filtered Audio",
                                                     command=self.play_filtered_audio)
         self.play_filtered_audio_button.pack(pady=10)
 
@@ -179,13 +89,6 @@ class AudioRecorder:
         else:
             messagebox.showwarning("Warning", "No audio recorded")
 
-    def save_audio(self):
-        if self.audio_data is not None:
-            write('output.wav', self.audio_data["samplerate"], self.audio_data["signal"])
-            messagebox.showinfo("Info", "Audio saved as output.wav")
-        else:
-            messagebox.showwarning("Warning", "No audio recorded")
-
     def play_filtered_audio(self):
         if self.filtered_audio_data is not None:
             sd.play(self.filtered_audio_data["signal"], samplerate=self.filtered_audio_data["samplerate"])
@@ -195,145 +98,24 @@ class AudioRecorder:
 
     def plot(self, audio_signal: T_Signal):
         self.canvas.get_tk_widget().destroy()
-        fig = Figure(figsize=(5, 5), dpi=100)
+        fig = Figure(figsize=(6, 6), dpi=100)
         y = audio_signal["signal"]
         # adding the subplot
         plot1 = fig.add_subplot(111)
         # plotting the graph
         plot1.plot(y)
+        plot1.set_title('Time Domain Graph of Audio Recording')
+        plot1.set_xlabel('Samples')
+        plot1.set_ylabel('Amplitude')
         self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
         self.canvas.draw()
         # placing the canvas on the Tkinter window
         self.canvas.get_tk_widget().pack()
 
-
-    # TODO: decompose these into frequency and time domain functions
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal
-    by factor (multiply sampling rate) and return filtered audio data."""
-    """
-    def apply_filter_type1(self, audio_signal: T_Signal, transfer_func: W_Signal, factor: float = 1,
-                           impulse_response: T_Signal | None = None) -> T_Signal:
-
-        # note: for efficiency, we might try setting n to a power of 2 in the future
-        fft_audio_signal = np.fft.fft([data[0] for data in audio_signal["signal"]])
-        fft_freqs = np.fft.fftfreq(len(fft_audio_signal), d=1 / audio_signal["samplerate"])
-
-        # apply transfer function to fourier transform of audio signal
-        fit_transfer_func = fit_array_transfer_func(transfer_func, fft_freqs)
-
-        fft_filtered_audio_signal = fft_audio_signal * fit_transfer_func["signal"]
-
-        # convert back to time domain
-        filtered_audio_signal = np.fft.ifft(fft_filtered_audio_signal).real
-
-        # convolve with impulse response, if given
-        if (impulse_response is not None):
-            fit_impulse_response = fit_array_impulse_response(impulse_response, audio_signal["samplerate"])
-            final_filtered_audio_signal = np.convolve(filtered_audio_signal, fit_impulse_response["signal"],
-                                                      mode='same')
-
-            return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-        else:
-            return {"signal": filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-    """
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal
-    by factor (multiply sampling rate) and return filtered audio data."""
-    """
-    def apply_filter_type2(self, audio_signal: T_Signal, transfer_func: Callable[[float], complex], factor: float = 1,
-                           impulse_response: Callable[[float], float] | None = None,
-                           impulse_length: int = 100) -> T_Signal:
-
-        # note: for efficiency, we might try setting n to a power of 2 in the future
-        fft_audio_signal = np.fft.fft([data[0] for data in audio_signal["signal"]])
-        print(np.shape(fft_audio_signal))
-        fft_freqs = np.fft.fftfreq(len(fft_audio_signal), d=1 / audio_signal["samplerate"])
-
-        # apply transfer function to fourier transform of audio signal
-        fit_transfer_func = get_fit_transfer_func(transfer_func, fft_freqs)
-        print(np.shape(fit_transfer_func["signal"]))
-        fft_filtered_audio_signal = fft_audio_signal * fit_transfer_func["signal"]
-        print(fit_transfer_func["signal"][0:200:2])
-        print(fft_freqs[0:200:2])
-        print(fft_audio_signal[0:200:2])
-        print(fft_filtered_audio_signal[0:200:2])
-
-        # convert back to time domain
-        filtered_audio_signal = np.fft.ifft(fft_filtered_audio_signal).real
-
-        print([data[0] for data in audio_signal["signal"]][0:50])
-        print(filtered_audio_signal[0:50])
-
-        # convolve with impulse response, if given
-        if (impulse_response is not None):
-            fit_impulse_response = get_fit_impulse_response(impulse_response, audio_signal["samplerate"],
-                                                            impulse_length)
-            print(np.shape(fit_impulse_response["signal"]))
-            vector_filtered_audio_signal = np.convolve(filtered_audio_signal, fit_impulse_response["signal"],
-                                                       mode='valid')
-            final_filtered_audio_signal = np.array([[data] for data in vector_filtered_audio_signal])
-
-            print(audio_signal["signal"][:100])
-            print()
-            print(filtered_audio_signal[:100])
-            print()
-            print(fit_impulse_response["signal"][:100])
-            print()
-            print(vector_filtered_audio_signal[:100])
-            print()
-            print(final_filtered_audio_signal[:100])
-
-            return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-        else:
-
-            final_filtered_audio_signal = np.array(
-                [[data] for data in filtered_audio_signal])  # convert back to form sounddevice expects
-
-            print(audio_signal["signal"][:100])
-            print()
-            print(fft_audio_signal[:100])
-            print()
-            print(fft_filtered_audio_signal[:100])
-            print()
-            print(filtered_audio_signal[:100])
-            print()
-            print(final_filtered_audio_signal[:100])
-
-            return {"signal": final_filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
-    """
-    """Apple demo low-pass filter, which I hope sounds like an echo, on audio_data, and save to filtered_audio_data."""
-    """
-    def apply_impulse_filter(self, audio_signal: T_Signal,
-                             impulse_response: T_Signal | None = None) -> T_Signal:
-
-        # convolve with impulse response, if given
-        if impulse_response is not None:
-            fit_impulse_response = fit_array_impulse_response(impulse_response, audio_signal["samplerate"])
-            final_filtered_audio_signal = np.convolve(numpy.reshape(audio_signal["signal"], audio_signal["signal"].shape[0]), fit_impulse_response["signal"],
-                                                      mode='same')
-
-            return {"signal": final_filtered_audio_signal/500000, "samplerate": int(audio_signal["samplerate"])}
-        else:
-            return {"signal": audio_signal["signal"], "samplerate": int(audio_signal["samplerate"])}
-
-    def demo_filter1(self):
-
-        def transfer_func(w: float) -> complex:
-            return 100 / (4 + 1j * w)
-
-    """
-    """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay
-    impulse of time constant f 1 second"""
-    """
-    def demo_filter2(self):
-        def transfer_func(w: float) -> complex:
-            return 1
-    """
     def ghost_filter(self):
         sound = AudioChanger(self.audio_data)
         sound.set_audio_speed(0.7)
-        sound.set_volume(1000)
+        sound.set_volume(5000)
         sound.set_echo(0.1)
         sound.set_echo(0.2)
         sound.set_highpass(1000)
@@ -346,41 +128,18 @@ class AudioRecorder:
         sound.set_audio_speed(0.65)
         sound.set_volume(10)
         sound.set_echo(0.1)
-        sound.set_lowpass(6000)
+        sound.set_lowpass(12000)
         self.filtered_audio_data = sound.get_audio_data()
         self.plot(self.filtered_audio_data)
 
-    def zombie_filter(self):
+    def alien_filter(self):
         sound = AudioChanger(self.audio_data)
-        sound.set_volume(0.7)
+        sound.set_volume(5)
         sound.set_echo(0.1)
-        sound.set_echo(0.2)
-        sound.set_highpass(1000)
-        sound.set_audio_pitch(6)
+        sound.set_audio_speed(1.2)
+        sound.set_bandpass(4000, 30000)
         self.filtered_audio_data = sound.get_audio_data()
         self.plot(self.filtered_audio_data)
-
-"""
-    def impulse_response(t: float) -> float:
-        return np.exp(-t)
-
-        self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1, impulse_response, 100)
-"""
-
-"""
-    def get_impulse(self, file="zombie-6851.wav"):
-        aud_file = wave.open(file)
-        # The number of audio frames in the file
-        aud_nframes = aud_file.getnframes()
-        # The frame rate, or sampling rate, in Hz
-        aud_framerate = aud_file.getframerate()
-        # The number of channels (e.g., stereo audio = 2 channels)
-        aud_nchannels = aud_file.getnchannels()
-        sig = np.frombuffer(aud_file.readframes(aud_nframes), dtype=np.int16)
-        sig = sig.astype(float)
-        aud_file.close()
-        return T_Signal(signal=sig, samplerate=aud_framerate)
-"""
 
 if __name__ == "__main__":
     root = tk.Tk()
