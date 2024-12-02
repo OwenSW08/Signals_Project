@@ -8,6 +8,7 @@ from typing import TypedDict, Callable
 import numpy
 import sounddevice as sd
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy.io.wavfile import write
 import T_Signal
 
@@ -99,18 +100,18 @@ class AudioRecorder:
     def __init__(self, root):
         self.root = root
         self.root.title("Audio Recorder")
-        self.root.geometry("800x400")
+        self.root.geometry("800x500")
         self.main_box = tk.LabelFrame(root, pady=20)
         self.button_box = tk.LabelFrame(self.main_box, pady=20)
         self.main_box.pack(side="top", fill="x")
-        self.button_box.pack(pady=20)
-        self.fig = Figure(figsize=(3, 3), dpi=100)
-        self.y = [i ** 2 for i in range(101)]
+        self.button_box.pack(side="left", pady=20)
+        fig = Figure(figsize=(5, 5), dpi=100)
+        y = [i ** 2 for i in range(101)]
         # adding the subplot
-        self.plot1 = self.fig.add_subplot(111)
+        plot1 = fig.add_subplot(111)
         # plotting the graph
-        self.plot1.plot(self.y)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.main_box)
+        plot1.plot(y)
+        self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
         self.canvas.draw()
         # placing the canvas on the Tkinter window
         self.canvas.get_tk_widget().pack()
@@ -167,6 +168,7 @@ class AudioRecorder:
             self.recording = False
             self.record_button.config(text="Record")
             messagebox.showinfo("Info", "Recording finished")
+            self.plot(self.audio_data)
         else:
             messagebox.showwarning("Warning", "Already recording")
 
@@ -190,6 +192,20 @@ class AudioRecorder:
             sd.wait()
         else:
             messagebox.showwarning("Warning", "No audio recorded")
+
+    def plot(self, audio_signal: T_Signal):
+        self.canvas.get_tk_widget().destroy()
+        fig = Figure(figsize=(5, 5), dpi=100)
+        y = audio_signal["signal"]
+        # adding the subplot
+        plot1 = fig.add_subplot(111)
+        # plotting the graph
+        plot1.plot(y)
+        self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
+        self.canvas.draw()
+        # placing the canvas on the Tkinter window
+        self.canvas.get_tk_widget().pack()
+
 
     # TODO: decompose these into frequency and time domain functions
     """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
@@ -316,6 +332,7 @@ class AudioRecorder:
         sound.set_highpass(1000)
         sound.set_audio_pitch(6)
         self.filtered_audio_data = sound.get_audio_data()
+        self.plot(self.filtered_audio_data)
 
     def banshee_filter(self):
         sound = AudioChanger(self.audio_data)
@@ -325,6 +342,7 @@ class AudioRecorder:
         sound.set_highpass(1000)
         sound.set_audio_pitch(6)
         self.filtered_audio_data = sound.get_audio_data()
+        self.plot(self.filtered_audio_data)
 
     def zombie_filter(self):
         sound = AudioChanger(self.audio_data)
@@ -334,7 +352,7 @@ class AudioRecorder:
         sound.set_highpass(1000)
         sound.set_audio_pitch(6)
         self.filtered_audio_data = sound.get_audio_data()
-
+        self.plot(self.filtered_audio_data)
 
 """
     def impulse_response(t: float) -> float:
