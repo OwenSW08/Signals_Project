@@ -46,13 +46,14 @@ class AudioChanger(object):
         self.audio_data = output_audio
 
     def set_audio_pitch(self, n, window_size=2 ** 13, h=2 ** 11):
-        '''Sets the pitch of the audio to a certain threshold'''
+        '''Sets the pitch of the audio to a certain threshold (speed up audio by factor to increase the frequecy, but then stretch while maintaining frequency to restore the original speed)'''
         factor = 2 ** (1.0 * n / 12.0)
         self._set_stretch(1.0 / factor, window_size, h)
         self.audio_data = self.audio_data[window_size:]
         self.set_audio_speed(factor)
 
     def _set_stretch(self, factor, window_size, h):
+        """Stretch audio length by factor while maintaining pitch using the Phase Vocoder technique"""
         phase = np.zeros(window_size)
         hanning_window = np.hanning(window_size)
         result = np.zeros(int(len(self.audio_data) / factor + window_size))
@@ -62,7 +63,7 @@ class AudioChanger(object):
             a1 = self.audio_data[int(i): int(i + window_size)]
             a2 = self.audio_data[int(i + h): int(i + window_size + h)]
 
-            # The spectra of these arrays
+            # The spectra of these arrays, with the hanning window applied (to smooth the signal and stop leakage)
             s1 = np.fft.fft(hanning_window * a1)
             s2 = np.fft.fft(hanning_window * a2)
 
@@ -81,14 +82,14 @@ class AudioChanger(object):
         '''Applies a low pass filter'''
         nyquist = self.sample_freq # shouldn't there be a *2 here?
         cutoff = cutoff_low / nyquist # this is the "normalized" frequency - signal.butter's cutoff input takes a float from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
-        x, y = signal.butter(order, cutoff, btype='lowpass', analog=False)
+        x, y = signal.butter(order, cutoff, btype='lowpass', analog=False) # consider adding output='sos', to avoid floating-point errors associated with higher-order polynomial to root relationships
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def set_highpass(self, cutoff_high, order=5):
         '''Applies a high pass filter'''
         nyquist = self.sample_freq  # repeat: shouldn't there be a *2 here?
         cutoff = cutoff_high / nyquist # this is the "normalized" frequency - signal.butter's cutoff input takes a float from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
-        x, y = signal.butter(order, cutoff, btype='highpass', analog=False)
+        x, y = signal.butter(order, cutoff, btype='highpass', analog=False) # consider adding output='sos'
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def set_bandpass(self, cutoff_low, cutoff_high, order=5):
@@ -99,7 +100,7 @@ class AudioChanger(object):
         # these are the "normalized" frequencies - signal.butter's cutoff input takes floats from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
         cutoff[0] = cutoff_low / nyquist
         cutoff[1] = cutoff_high / nyquist
-        x, y = signal.butter(order, cutoff, btype='bandpass', analog=False)
+        x, y = signal.butter(order, cutoff, btype='bandpass', analog=False) # consider adding output='sos'
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def get_audio_data(self):
