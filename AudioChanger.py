@@ -17,11 +17,12 @@ class AudioChanger(object):
 
     @staticmethod
     def normalize (audio):
+        """Divide audio data by its maximum value to normalize the data"""
         normalized_signal = (audio / np.max(np.abs(audio)))
         return normalized_signal
 
     def set_audio_speed(self, speed_factor):
-        '''Sets the speed of the audio by a floating-point factor'''
+        '''Multiply the speed of the audio by a floating-point factor'''
         sound_index = np.round(np.arange(0, len(self.audio_data), speed_factor))
         self.audio_data = self.audio_data[sound_index[sound_index < len(self.audio_data)].astype(int)]
 
@@ -36,7 +37,7 @@ class AudioChanger(object):
         self.audio_data = output_audio
 
     def set_volume(self, level):
-        '''Sets the overall volume of the data via floating-point factor'''
+        '''Sets the overall volume of the data via floating-point factor (multiply volume by level)'''
         output_audio = np.zeros(len(self.audio_data))
 
         for count, e in enumerate(self.audio_data):
@@ -78,22 +79,24 @@ class AudioChanger(object):
 
     def set_lowpass(self, cutoff_low, order=5):
         '''Applies a low pass filter'''
-        nyquist = self.sample_freq
-        cutoff = cutoff_low / nyquist
+        nyquist = self.sample_freq # shouldn't there be a *2 here?
+        cutoff = cutoff_low / nyquist # this is the "normalized" frequency - signal.butter's cutoff input takes a float from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
         x, y = signal.butter(order, cutoff, btype='lowpass', analog=False)
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def set_highpass(self, cutoff_high, order=5):
         '''Applies a high pass filter'''
-        nyquist = self.sample_freq
-        cutoff = cutoff_high / nyquist
+        nyquist = self.sample_freq  # repeat: shouldn't there be a *2 here?
+        cutoff = cutoff_high / nyquist # this is the "normalized" frequency - signal.butter's cutoff input takes a float from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
         x, y = signal.butter(order, cutoff, btype='highpass', analog=False)
         self.audio_data = signal.filtfilt(x, y, self.audio_data)
 
     def set_bandpass(self, cutoff_low, cutoff_high, order=5):
         '''Applies a band pass filter'''
         cutoff = np.zeros(2)
-        nyquist = self.sample_freq
+        nyquist = self.sample_freq # repeat: shouldn't there be a *2 here?
+
+        # these are the "normalized" frequencies - signal.butter's cutoff input takes floats from 0 to 1, where 1 corresponds to the Nyquist frequency (so the unit of this is half cycles/sample)
         cutoff[0] = cutoff_low / nyquist
         cutoff[1] = cutoff_high / nyquist
         x, y = signal.butter(order, cutoff, btype='bandpass', analog=False)
