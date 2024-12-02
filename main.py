@@ -28,7 +28,7 @@ class W_Signal(TypedDict):
     delta_w: float
 
 
-"""Generate transfer function in W_signal format from a callback function (in form f(w)=H(jw)), given list of 
+"""Generate transfer function in W_signal format from a callback function (in form f(w)=H(jw)), given list of
 frequencies. Note that for delta_w in the output is  only accurate if the input frequencies are evenly spaced."""
 
 
@@ -72,7 +72,7 @@ def get_fit_impulse_response(impulse_response: Callable[[float], float], sampler
     return {"signal": impulse_response_vals, "samplerate": samplerate}
 
 
-"""Return given array-based impulse response converted to given sampling rate. If sampling rate is the same, 
+"""Return given array-based impulse response converted to given sampling rate. If sampling rate is the same,
 return copy."""
 
 
@@ -208,8 +208,8 @@ class AudioRecorder:
 
 
     # TODO: decompose these into frequency and time domain functions
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
+    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse
+    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal
     by factor (multiply sampling rate) and return filtered audio data."""
     """
     def apply_filter_type1(self, audio_signal: T_Signal, transfer_func: W_Signal, factor: float = 1,
@@ -237,8 +237,8 @@ class AudioRecorder:
         else:
             return {"signal": filtered_audio_signal, "samplerate": int(audio_signal["samplerate"] * factor)}
     """
-    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse 
-    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal 
+    """Apply array-based transfer function to the fourier transform of audio data, convolve audio data with impulse
+    response (might remove, since this the transfer function can accomplish this), compress final time-domain signal
     by factor (multiply sampling rate) and return filtered audio data."""
     """
     def apply_filter_type2(self, audio_signal: T_Signal, transfer_func: Callable[[float], complex], factor: float = 1,
@@ -254,9 +254,16 @@ class AudioRecorder:
         fit_transfer_func = get_fit_transfer_func(transfer_func, fft_freqs)
         print(np.shape(fit_transfer_func["signal"]))
         fft_filtered_audio_signal = fft_audio_signal * fit_transfer_func["signal"]
+        print(fit_transfer_func["signal"][0:200:2])
+        print(fft_freqs[0:200:2])
+        print(fft_audio_signal[0:200:2])
+        print(fft_filtered_audio_signal[0:200:2])
 
         # convert back to time domain
         filtered_audio_signal = np.fft.ifft(fft_filtered_audio_signal).real
+
+        print([data[0] for data in audio_signal["signal"]][0:50])
+        print(filtered_audio_signal[0:50])
 
         # convolve with impulse response, if given
         if (impulse_response is not None):
@@ -316,23 +323,19 @@ class AudioRecorder:
             return 100 / (4 + 1j * w)
 
     """
-    """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay 
+    """Apply demo echo filter on audio_data, and save to filtered_audio_data, approximated with exponential decay
     impulse of time constant f 1 second"""
     """
     def demo_filter2(self):
         def transfer_func(w: float) -> complex:
             return 1
-    """
 
-    def ghost_filter(self):
-        sound = AudioChanger(self.audio_data)
-        sound.set_audio_speed(0.8)
-        sound.set_volume(0.1)
-        sound.set_echo(0.1)
-        sound.set_highpass(1000)
-        sound.set_audio_pitch(6)
-        self.filtered_audio_data = sound.get_audio_data()
-        self.plot(self.filtered_audio_data)
+        def impulse_response(t: float) -> float:
+            return np.exp(-t)
+
+        #print(self.audio_data["signal"][0:50])
+        self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1)
+        print(self.filtered_audio_data["signal"][0:50])
 
     def banshee_filter(self):
         sound = AudioChanger(self.audio_data)
