@@ -141,7 +141,7 @@ class AudioRecorder:
         self.filter3_button = tk.Button(self.button_box, text="Use Ghost filter", command=self.ghost_filter)
         self.filter3_button.pack(pady=10)
 
-        self.filter4_button = tk.Button(self.button_box, text="Use Banshee filter", command=self.banshee_filter)
+        self.filter4_button = tk.Button(self.button_box, text="Use Demon filter", command=self.demon_filter)
         self.filter4_button.pack(pady=10)
 
         self.filter5_button = tk.Button(self.button_box, text="Use Zombie filter", command=self.zombie_filter)
@@ -329,21 +329,24 @@ class AudioRecorder:
     def demo_filter2(self):
         def transfer_func(w: float) -> complex:
             return 1
-
-        def impulse_response(t: float) -> float:
-            return np.exp(-t)
-
-        #print(self.audio_data["signal"][0:50])
-        self.filtered_audio_data = self.apply_filter_type2(self.audio_data, transfer_func, 1)
-        print(self.filtered_audio_data["signal"][0:50])
-
-    def banshee_filter(self):
+    """
+    def ghost_filter(self):
         sound = AudioChanger(self.audio_data)
-        sound.set_volume(0.7)
+        sound.set_audio_speed(0.7)
+        sound.set_volume(1000)
         sound.set_echo(0.1)
         sound.set_echo(0.2)
         sound.set_highpass(1000)
-        sound.set_audio_pitch(6)
+        sound.set_audio_pitch(8)
+        self.filtered_audio_data = sound.get_audio_data()
+        self.plot(self.filtered_audio_data)
+
+    def demon_filter(self):
+        sound = AudioChanger(self.audio_data)
+        sound.set_audio_speed(0.65)
+        sound.set_volume(10)
+        sound.set_echo(0.1)
+        sound.set_lowpass(6000)
         self.filtered_audio_data = sound.get_audio_data()
         self.plot(self.filtered_audio_data)
 
