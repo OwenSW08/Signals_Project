@@ -22,12 +22,15 @@ class AudioRecorder:
         self.button_box = tk.LabelFrame(self.main_box, pady=20)
         self.main_box.pack(side="top", fill="x")
         self.button_box.pack(side="left", pady=20)
-        fig = Figure(figsize=(5, 5), dpi=100)
-        y = [i ** 2 for i in range(101)]
+        fig = Figure(figsize=(6, 6), dpi=100)
+        y = 0
         # adding the subplot
         plot1 = fig.add_subplot(111)
         # plotting the graph
         plot1.plot(y)
+        plot1.set_title('Time Domain Graph of Audio Recording')
+        plot1.set_xlabel('Samples')
+        plot1.set_ylabel('Amplitude')
         self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
         self.canvas.draw()
         # placing the canvas on the Tkinter window
@@ -95,12 +98,15 @@ class AudioRecorder:
 
     def plot(self, audio_signal: T_Signal):
         self.canvas.get_tk_widget().destroy()
-        fig = Figure(figsize=(5, 5), dpi=100)
+        fig = Figure(figsize=(6, 6), dpi=100)
         y = audio_signal["signal"]
         # adding the subplot
         plot1 = fig.add_subplot(111)
         # plotting the graph
         plot1.plot(y)
+        plot1.set_title('Time Domain Graph of Audio Recording')
+        plot1.set_xlabel('Samples')
+        plot1.set_ylabel('Amplitude')
         self.canvas = FigureCanvasTkAgg(fig, master=self.main_box)
         self.canvas.draw()
         # placing the canvas on the Tkinter window
